@@ -2,7 +2,10 @@ from collections.abc import Callable
 from typing import Any
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 import time
+import logging
+logger = logging.getLogger(__name__)
 
 
 class LoggerMiddleware(BaseHTTPMiddleware):
@@ -24,16 +27,26 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         query = request.url.query
 
-        print(f"[REQUEST] {method} {path}?{query or ''} - received")
+        logger.info(f"[REQUEST] {method} {path}?{query or ''} - received")
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as e:
 
-        duration = time.time() - start_time
+            duration = (time.time() - start_time) * 1000
+            logger.error(
+                f"[ERROR] {method} {path} failed after {duration:.2f}ms - {e}",
+                exc_info=True,
+            )
 
-        print(
-            f"[RESPONSE] {method} {path} "
-            f"Status: {response.status_code} "
-            f"Duration: {duration:.3f}s"
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error"},
+            )
+
+
+        duration = (time.time() - start_time) * 1000
+        logger.info(
+            f"[RESPONSE] {method} {path} - {response.status_code} - {duration:.2f}ms"
         )
-
         return response

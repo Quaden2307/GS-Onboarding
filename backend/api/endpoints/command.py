@@ -32,7 +32,7 @@ def create_command(payload: CommandRequest, db: Session = Depends(get_db)):
     :return: returns a json object with field of "data" under which there is the payload now pulled from the database 
     """
     # TODO:(Member) Implement this endpoint
-    new_command = Command(**payload.dict())
+    new_command = Command(**payload.model_dump())
 
     db.add(new_command)
     db.commit()
@@ -57,11 +57,11 @@ def delete_command(id: int, db: Session = Depends(get_db)):
     if command_to_delete is None:
         raise HTTPException(status_code=404, detail="Command not found")
     
+    
     db.delete(command_to_delete)
     db.commit()
 
-    items = db.exec(select(Command)).all()
-    return {"data": items}
+    return get_commands(db)
 
 
 
